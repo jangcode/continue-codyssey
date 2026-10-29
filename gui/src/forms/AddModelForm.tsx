@@ -1,42 +1,39 @@
 import {
-  ArrowPathIcon,
-  ArrowTopRightOnSquareIcon,
+    ArrowPathIcon,
+    ArrowTopRightOnSquareIcon,
 } from "@heroicons/react/24/outline";
+import {
+    CODYSSEY_API_BASE,
+    CODYSSEY_DEFAULT_MODEL,
+    CODYSSEY_PROVIDER,
+} from "core/util/constants";
 import { useCallback, useContext, useEffect, useState } from "react";
 import { FormProvider, useForm } from "react-hook-form";
 import { Button, Input, StyledActionButton } from "../components";
 import Alert from "../components/gui/Alert";
 import ModelSelectionListbox from "../components/modelSelection/ModelSelectionListbox";
-import { ModelProviderTags } from "../components/modelSelection/utils";
 import { useAuth } from "../context/Auth";
 import { IdeMessengerContext } from "../context/IdeMessenger";
 import { completionParamsInputs } from "../pages/AddNewModel/configs/completionParamsInputs";
 import {
-  fetchProviderModels,
-  initializeDynamicModels,
+    fetchProviderModels,
+    initializeDynamicModels,
 } from "../pages/AddNewModel/configs/fetchProviderModels";
 import { DisplayInfo, ModelPackage } from "../pages/AddNewModel/configs/models";
-import {
-  ProviderInfo,
-  providers,
-} from "../pages/AddNewModel/configs/providers";
+import { providers } from "../pages/AddNewModel/configs/providers";
 
 interface AddModelFormProps {
   onDone: () => void;
 }
 
-const MODEL_PROVIDERS_URL =
-  "https://docs.continue.dev/customize/model-providers";
-const CODESTRAL_URL = "https://console.mistral.ai/codestral";
-const CONTINUE_SETUP_URL = "https://docs.continue.dev/setup/overview";
 
 export function AddModelForm({ onDone }: AddModelFormProps) {
-  const [selectedProvider, setSelectedProvider] = useState<ProviderInfo>(
-    providers["openai"]!,
-  );
+  const selectedProvider = providers[CODYSSEY_PROVIDER]!;
   const { selectedProfile } = useAuth();
   const [selectedModel, setSelectedModel] = useState(
-    selectedProvider.packages[0],
+    selectedProvider.packages.find(
+      (model) => model.params.model === CODYSSEY_DEFAULT_MODEL,
+    ) ?? selectedProvider.packages[0],
   );
   const formMethods = useForm();
   const ideMessenger = useContext(IdeMessengerContext);
@@ -78,35 +75,6 @@ export function AddModelForm({ onDone }: AddModelFormProps) {
     }
   }, [ideMessenger, selectedProvider, formMethods]);
 
-  const popularProviderTitles = [
-    providers["openai"]?.title || "",
-    providers["anthropic"]?.title || "",
-    providers["mistral"]?.title || "",
-    providers["gemini"]?.title || "",
-    providers["azure"]?.title || "",
-    providers["ollama"]?.title || "",
-    providers["openrouter"]?.title || "",
-  ];
-
-  const allProviders = Object.entries(providers)
-    .filter(([key]) => !["openai-aiohttp"].includes(key))
-    .map(([, provider]) => provider)
-    .filter((provider) => !!provider)
-    .map((provider) => provider!); // for type checking
-
-  const popularProviders = allProviders
-    .filter((provider) => popularProviderTitles.includes(provider.title))
-    .sort((a, b) => a.title.localeCompare(b.title));
-
-  const otherProviders = allProviders
-    .filter((provider) => !popularProviderTitles.includes(provider.title))
-    .sort((a, b) => a.title.localeCompare(b.title));
-
-  const selectedProviderApiKeyUrl =
-    selectedModel && selectedModel.params.model.startsWith("codestral")
-      ? CODESTRAL_URL
-      : selectedProvider.apiKeyUrl;
-
   function isDisabled() {
     if (selectedProvider.downloadUrl) {
       return false;
@@ -122,25 +90,7 @@ export function AddModelForm({ onDone }: AddModelFormProps) {
     return !required?.every((value) => value !== undefined && value.length > 0);
   }
 
-  useEffect(() => {
-    setSelectedModel(selectedProvider.packages[0]);
-    if (!selectedProvider.tags?.includes(ModelProviderTags.RequiresApiKey)) {
-      formMethods.setValue("apiKey", "");
-    }
-  }, [selectedProvider]);
-
-  const requiresSkPrefix =
-    selectedProvider.provider === "openai" ||
-    selectedProvider.provider === "anthropic";
-
   const apiKeyValue = formMethods.watch("apiKey");
-  const apiKeyWarning =
-    requiresSkPrefix &&
-    apiKeyValue &&
-    apiKeyValue.length > 0 &&
-    !apiKeyValue.startsWith("sk-")
-      ? "API key usually starts with sk-"
-      : undefined;
 
   function onSubmit() {
     const apiKey = formMethods.watch("apiKey");
@@ -156,6 +106,7 @@ export function AddModelForm({ onDone }: AddModelFormProps) {
       ...selectedModel.params,
       ...reqInputFields,
       provider: selectedProvider.provider,
+      apiBase: CODYSSEY_API_BASE,
       title: selectedModel.title,
       ...(hasValidApiKey ? { apiKey } : {}),
     };
@@ -190,36 +141,6 @@ export function AddModelForm({ onDone }: AddModelFormProps) {
           <h1 className="mb-0 text-center text-2xl">Add Chat model</h1>
 
           <div className="my-8 flex flex-col gap-6">
-            <div>
-              <label className="block text-sm font-medium">Provider</label>
-              <ModelSelectionListbox
-                selectedProvider={selectedProvider}
-                setSelectedProvider={(val: DisplayInfo) => {
-                  const match = [...popularProviders, ...otherProviders].find(
-                    (provider) => provider.title === val.title,
-                  );
-                  if (match) {
-                    setSelectedProvider(match);
-                  }
-                }}
-                topOptions={popularProviders}
-                otherOptions={otherProviders}
-                searchPlaceholder="Search providers..."
-              />
-              <span className="text-description-muted mt-1 block text-xs">
-                Don't see your provider?{" "}
-                <a
-                  className="cursor-pointer text-inherit underline hover:text-inherit"
-                  onClick={() =>
-                    ideMessenger.post("openUrl", MODEL_PROVIDERS_URL)
-                  }
-                >
-                  Click here
-                </a>{" "}
-                to view the full list
-              </span>
-            </div>
-
             {selectedProvider.downloadUrl && (
               <div>
                 <label className="mb-1 block text-sm font-medium">
@@ -322,45 +243,20 @@ export function AddModelForm({ onDone }: AddModelFormProps) {
               </div>
             )}
 
-            {selectedProvider.apiKeyUrl && (
+            <div>
               <div>
-                <>
-                  <label className="mb-1 block text-sm font-medium">
-                    API key
-                  </label>
-                  <Input
-                    id="apiKey"
-                    className={
-                      apiKeyWarning ? "border-warning w-full" : "w-full"
-                    }
-                    type="password"
-                    placeholder={`Enter your ${selectedProvider.title} API key`}
-                    {...formMethods.register("apiKey")}
-                  />
-                  {apiKeyWarning && (
-                    <span className="text-warning mt-1 block text-xs">
-                      {apiKeyWarning}
-                    </span>
-                  )}
-                  <span className="text-description-muted mt-1 block text-xs">
-                    <a
-                      className="cursor-pointer text-inherit underline hover:text-inherit hover:brightness-125"
-                      onClick={() => {
-                        if (selectedProviderApiKeyUrl) {
-                          ideMessenger.post(
-                            "openUrl",
-                            selectedProviderApiKeyUrl,
-                          );
-                        }
-                      }}
-                    >
-                      Click here
-                    </a>{" "}
-                    to create a {selectedProvider.title} API key
-                  </span>
-                </>
+                <label className="mb-1 block text-sm font-medium">
+                  Codyssey API key
+                </label>
+                <Input
+                  id="apiKey"
+                  className="w-full"
+                  type="password"
+                  placeholder="Enter your Codyssey API key"
+                  {...formMethods.register("apiKey")}
+                />
               </div>
-            )}
+            </div>
 
             {selectedProvider.collectInputFor &&
               selectedProvider.collectInputFor

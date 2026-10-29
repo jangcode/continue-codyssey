@@ -4,8 +4,8 @@ import { v4 as uuidv4 } from "uuid";
 
 import { CompletionProvider } from "./autocomplete/CompletionProvider";
 import {
-  openedFilesLruCache,
-  prevFilepaths,
+    openedFilesLruCache,
+    prevFilepaths,
 } from "./autocomplete/util/openedFilesLruCache";
 import { ConfigHandler } from "./config/ConfigHandler";
 import { addModel, deleteModel } from "./config/util";
@@ -14,37 +14,41 @@ import { DataLogger } from "./data/log";
 import { CodebaseIndexer } from "./indexing/CodebaseIndexer";
 import DocsService from "./indexing/docs/DocsService";
 import { countTokens } from "./llm/countTokens";
-import Lemonade from "./llm/llms/Lemonade";
 import { fetchModels } from "./llm/fetchModels";
+import Lemonade from "./llm/llms/Lemonade";
 import Ollama from "./llm/llms/Ollama";
 import { EditAggregator } from "./nextEdit/context/aggregateEdits";
 import { createNewPromptFileV2 } from "./promptFiles/createNewPromptFile";
 import { callTool } from "./tools/callTool";
 import { ChatDescriber } from "./util/chatDescriber";
+import {
+    CODYSSEY_API_BASE,
+    CODYSSEY_SECRET_NAME,
+} from "./util/constants";
 import { compactConversation } from "./util/conversationCompaction";
 import { GlobalContext } from "./util/GlobalContext";
 import historyManager from "./util/history";
 import { editConfigFile, migrateV1DevDataFiles } from "./util/paths";
 
 import {
-  isProcessBackgrounded,
-  killTerminalProcess,
-  markProcessAsBackgrounded,
+    isProcessBackgrounded,
+    killTerminalProcess,
+    markProcessAsBackgrounded,
 } from "./util/processTerminalStates";
 import { getSymbolsForManyFiles } from "./util/treeSitter";
 import { TTS } from "./util/tts";
 
 import {
-  CompleteOnboardingPayload,
-  ContextItemId,
-  ContextItemWithId,
-  IdeSettings,
-  ModelDescription,
-  Position,
-  RangeInFile,
-  ToolCall,
-  type ContextItem,
-  type IDE,
+    CompleteOnboardingPayload,
+    ContextItemId,
+    ContextItemWithId,
+    IdeSettings,
+    ModelDescription,
+    Position,
+    RangeInFile,
+    ToolCall,
+    type ContextItem,
+    type IDE,
 } from ".";
 
 import { ConfigYaml } from "@continuedev/config-yaml";
@@ -52,19 +56,19 @@ import { getDiffFn, GitDiffCache } from "./autocomplete/snippets/gitDiffCache";
 import { stringifyMcpPrompt } from "./commands/slash/mcpSlashCommand";
 import { createNewAssistantFile } from "./config/createNewAssistantFile";
 import {
-  isColocatedRulesFile,
-  isContinueAgentConfigFile,
-  isContinueConfigRelatedUri,
+    isColocatedRulesFile,
+    isContinueAgentConfigFile,
+    isContinueConfigRelatedUri,
 } from "./config/loadLocalAssistants";
 import { CodebaseRulesCache } from "./config/markdown/loadCodebaseRules";
 import {
-  setupLocalConfig,
-  setupProviderConfig,
-  setupQuickstartConfig,
+    setupLocalConfig,
+    setupProviderConfig,
+    setupQuickstartConfig,
 } from "./config/onboarding";
 import {
-  createNewGlobalRuleFile,
-  createNewWorkspaceBlockFile,
+    createNewGlobalRuleFile,
+    createNewWorkspaceBlockFile,
 } from "./config/workspace/workspaceBlocks";
 import { MCPManagerSingleton } from "./context/mcp/MCPManagerSingleton";
 import { performAuth, removeMCPAuth } from "./context/mcp/MCPOauth";
@@ -336,7 +340,13 @@ export class Core {
     });
 
     on("config/addModel", async (msg) => {
-      const model = msg.data.model;
+      const model = { ...msg.data.model };
+      if (model.apiBase === CODYSSEY_API_BASE && model.apiKey) {
+        await this.ide.writeSecrets({
+          [CODYSSEY_SECRET_NAME]: model.apiKey,
+        });
+        model.apiKey = `\${{ secrets.${CODYSSEY_SECRET_NAME} }}`;
+      }
       const { config } = await this.configHandler.loadConfig();
       const allModels = Object.values(config?.modelsByRole ?? {}).flat();
       const existing = allModels.find(

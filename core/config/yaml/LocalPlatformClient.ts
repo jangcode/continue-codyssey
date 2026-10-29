@@ -1,8 +1,8 @@
 import {
-  FQSN,
-  PlatformClient,
-  SecretResult,
-  SecretType,
+    FQSN,
+    PlatformClient,
+    SecretResult,
+    SecretType,
 } from "@continuedev/config-yaml";
 import * as dotenv from "dotenv";
 import { IDE } from "../..";
@@ -108,6 +108,24 @@ export class LocalPlatformClient implements PlatformClient {
             secretLocation: {
               secretName: fqsns[i].secretName,
               secretType: SecretType.ProcessEnv as SecretType.ProcessEnv,
+            },
+          };
+        }
+      }
+
+      if (!secretResult?.found) {
+        const storedSecrets = await this.ide.readSecrets([
+          fqsns[i].secretName,
+        ]);
+        const secretValueFromStorage = storedSecrets[fqsns[i].secretName];
+        if (secretValueFromStorage !== undefined) {
+          secretResult = {
+            found: true,
+            fqsn: fqsns[i],
+            value: secretValueFromStorage,
+            secretLocation: {
+              secretName: fqsns[i].secretName,
+              secretType: SecretType.ProcessEnv,
             },
           };
         }
