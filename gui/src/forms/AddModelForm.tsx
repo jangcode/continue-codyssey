@@ -1,11 +1,11 @@
 import {
-    ArrowPathIcon,
-    ArrowTopRightOnSquareIcon,
+  ArrowPathIcon,
+  ArrowTopRightOnSquareIcon,
 } from "@heroicons/react/24/outline";
 import {
-    CODYSSEY_API_BASE,
-    CODYSSEY_DEFAULT_MODEL,
-    CODYSSEY_PROVIDER,
+  CODYSSEY_API_BASE,
+  CODYSSEY_DEFAULT_MODEL,
+  CODYSSEY_PROVIDER,
 } from "core/util/constants";
 import { useCallback, useContext, useEffect, useState } from "react";
 import { FormProvider, useForm } from "react-hook-form";
@@ -16,8 +16,8 @@ import { useAuth } from "../context/Auth";
 import { IdeMessengerContext } from "../context/IdeMessenger";
 import { completionParamsInputs } from "../pages/AddNewModel/configs/completionParamsInputs";
 import {
-    fetchProviderModels,
-    initializeDynamicModels,
+  fetchProviderModels,
+  initializeDynamicModels,
 } from "../pages/AddNewModel/configs/fetchProviderModels";
 import { DisplayInfo, ModelPackage } from "../pages/AddNewModel/configs/models";
 import { providers } from "../pages/AddNewModel/configs/providers";
@@ -25,7 +25,6 @@ import { providers } from "../pages/AddNewModel/configs/providers";
 interface AddModelFormProps {
   onDone: () => void;
 }
-
 
 export function AddModelForm({ onDone }: AddModelFormProps) {
   const selectedProvider = providers[CODYSSEY_PROVIDER]!;
@@ -53,7 +52,6 @@ export function AddModelForm({ onDone }: AddModelFormProps) {
 
   const handleFetchModels = useCallback(async () => {
     const apiKey = formMethods.watch("apiKey");
-    const apiBase = formMethods.watch("apiBase");
     if (!apiKey) return;
 
     const providerAtFetchTime = selectedProvider.provider;
@@ -63,7 +61,7 @@ export function AddModelForm({ onDone }: AddModelFormProps) {
         ideMessenger,
         providerAtFetchTime,
         apiKey,
-        apiBase,
+        CODYSSEY_API_BASE,
       );
       setFetchedModelsList((prev) =>
         selectedProvider.provider === providerAtFetchTime ? models : prev,
